@@ -10,15 +10,16 @@ from modules.Spliter import Spliter, IsNotDataError
 
 class Voror(object):
     def __init__(self):
-        self._path = None
-        self._data = None
+        self._odir = None
+        self._opaths = None
+        self._coors = None
 
-    def split(self, path, direcotry='data'):
-        self._path = direcotry
+    def split(self, ipath, odir='data'):
+        self._odir = odir
         spliter = Spliter()
 
         try:
-            self._data = spliter.parse(path)
+            self._coors = spliter.parse(ipath)
         except FileNotFoundError as e:
             print('FileNotFoundError: Cannot find input file!')
             exit(0)
@@ -29,18 +30,13 @@ class Voror(object):
             print(e)
             exit(0)
 
-        spliter.write(direcotry)
+        self._opaths = spliter.write(odir)
         return self
 
     def run(self):
-        for i, frame in enumerate(self._data):
-            coor = []
-            for index in range(3):
-                pair = frame[index + 2].strip('\n').split(' ')
-                pair = [item for item in pair if item != '']
-                coor.extend([float(item) for item in pair])
+        for i, coor in enumerate(self._coors):
             command = 'voro++ -g {} {} {} {} {} {} {}'.format(
-                *coor, os.sep.join((self._path, 'frame-{}.dat'.format(i))))
+                *coor, self._opaths[i])
             print('Start to process frame {}...'.format(i))
             os.system(command)
 
@@ -48,8 +44,14 @@ class Voror(object):
 def main():
     voror = Voror()
     if len(sys.argv) == 1:
-        print('Usage:')
-        print('./Voror.py [name of data file] [path to output]')
+        print("+--------------------------------------+")
+        print("| __     __                            |")
+        print("| \ \   / /__  _ __ ___  _ __          |")
+        print("|  \ \ / / _ \| '__/ _ \| '__|         |")
+        print("|   \ V / (_) | | | (_) | |            |")
+        print("|    \_/ \___/|_|  \___/|_|   by Cycoe |")
+        print("+--------------------------------------+")
+        print('\nUsage:\t./Voror.py [name of data file] [path to output]')
         exit(0)
     if len(sys.argv) == 2:
         voror.split(sys.argv[1])
