@@ -11,15 +11,14 @@ from modules.Spliter import Spliter, IsNotDataError
 class Voror(object):
     def __init__(self):
         self._odir = None
-        self._opaths = None
-        self._coors = None
+        self._data = None
+        self._spliter = Spliter()
 
     def split(self, ipath, odir='data'):
         self._odir = odir
-        spliter = Spliter()
 
         try:
-            self._coors = spliter.parse(ipath)
+            self._data = self._spliter.split(ipath, odir)
         except FileNotFoundError as e:
             print('FileNotFoundError: Cannot find input file!')
             exit(0)
@@ -30,15 +29,18 @@ class Voror(object):
             print(e)
             exit(0)
 
-        self._opaths = spliter.write(odir)
         return self
 
     def run(self):
-        for i, coor in enumerate(self._coors):
+        for i, tag in enumerate(self._data.keys()):
             command = 'voro++ -g {} {} {} {} {} {} {}'.format(
-                *coor, self._opaths[i])
+                *self._data[tag]['coor'], self._data[tag]['opath'])
             print('Start to process frame {}...'.format(i))
             os.system(command)
+
+    def merge(self, opath='total.vol'):
+        print('Start to merge files...')
+        self._spliter.merge(opath)
 
 
 def main():
@@ -58,6 +60,7 @@ def main():
     else:
         voror.split(sys.argv[1], sys.argv[2])
     voror.run()
+    voror.merge()
 
 
 if __name__ == '__main__':

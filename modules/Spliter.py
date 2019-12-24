@@ -13,10 +13,9 @@ class IsNotDataError(Exception):
 
 class Spliter(object):
     def __init__(self):
-        self._ipath = None
         self._data = None
 
-    def parse(self, ipath):
+    def split(self, ipath, opath):
         # Error if input file does not exist
         if not os.path.exists(ipath):
             raise FileNotFoundError
@@ -26,8 +25,6 @@ class Spliter(object):
         # Error if input file is not a data file
         if not ipath.endswith('dat'):
             raise IsNotDataError(ipath)
-
-        self._ipath = ipath
 
         data = []
         flag = False
@@ -48,36 +45,37 @@ class Spliter(object):
             data.append(frame)
 
         # Calculate the box limits for all the frames
-        coors = []
-        for frame in data:
+        self._data = {}
+        for i, frame in enumerate(data):
+            tag = '{}-frame-{}'.format(ipath.split('.')[0], i)
+            self._data[tag] = {}
+
             coor = []
             for index in range(3):
                 limit = frame[index + 2].strip('\n').split(' ')
                 limit = [item for item in limit if item != '']
                 coor.extend([float(item) for item in limit])
-            coors.append(coor)
+            self._data[tag]['coor'] = tuple(coor)
+            self._data[tag]['head'] = frame[0]
+            self._data[tag]['data'] = frame[5:]
+            self._data[tag]['opath'] = os.sep.join((opath, tag))
 
-        self._data = data
-        return coors
-
-    def write(self, path):
         # make the output direcotry if it didn't exist
-        if not os.path.exists(path):
-            os.mkdir(path)
+        if not os.path.exists(opath):
+            os.mkdir(opath)
 
-        opaths = []
-        # Write the frame into the dat file
-        for i, frame in enumerate(self._data):
-            opath = os.sep.join(
-                (path, '{}-frame-{}.dat'.format(self._ipath.split('.')[0], i)))
-            opaths.append(opath)
-            with open(opath, 'w') as fp:
+        for tag in self._data.keys():
+            with open(self._data[tag]['opath'], 'w') as fp:
                 # Skip the topmost 5 rows
-                fp.writelines(frame[5:])
+                fp.writelines(self._data[tag]['data'])
 
-        self._clean()
-        return opaths
+        return self._data
 
-    def _clean(self):
-        del self._data
-        self._data = None
+    def merge(self, opath):
+        with open(opath, 'w') as fp:
+            for tag in self._data.keys():
+                fp.write(self._data[tag]['head'])
+                with open(self._data[tag]['opath'] + '.vol', 'r') as ip:
+                    fp.writelines(ip.readlines())
+
+        return self
