@@ -2,6 +2,8 @@
 data
 output
 *.dat
+*.vol
+voror
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
