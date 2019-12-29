@@ -184,11 +184,8 @@ void merge(Node *link, char *output_name) {
   fop = fopen(output_name, "w");
   while (link) {
     fputs(link->header, fop);
-    for (unsigned x = 0; x < 3; x++) {
-      sprintf(line, "%.16lf %.16lf\n", link->limits[2 * x],
-              link->limits[2 * x + 1]);
-      fputs(line, fop);
-    }
+    sprintf(line, "%u\n", link->length);
+    fputs(line, fop);
 
     sprintf(opath, "%s.vol", link->opath);
     fip = fopen(opath, "r");
