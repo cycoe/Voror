@@ -36,6 +36,7 @@ class Voror(object):
             command = 'voro++ -g {} {} {} {} {} {} {}'.format(
                 *self._data[tag]['coor'], self._data[tag]['opath'])
             print('Start to process frame {}...'.format(i))
+            # 用shell运行command
             os.system(command)
 
     def merge(self, opath='total.vol'):
@@ -45,6 +46,8 @@ class Voror(object):
 
 def main():
     voror = Voror()
+    # sys.argv 代表了命令行参数（运行命令时后面跟的参数）
+    # 输出帮助信息
     if len(sys.argv) == 1:
         print("+--------------------------------------+")
         print("| __     __                            |")
@@ -55,8 +58,10 @@ def main():
         print("+--------------------------------------+")
         print('\nUsage:\t./Voror.py [name of data file] [path to output]')
         exit(0)
+    # 输入两个参数 ：代码名 读入的文件名
     if len(sys.argv) == 2:
         voror.split(sys.argv[1])
+    # 输入三个参数：代码名 读入的文件名 输出的文件夹名
     else:
         voror.split(sys.argv[1], sys.argv[2])
     voror.run()
