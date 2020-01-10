@@ -12,6 +12,7 @@
 #define CMD_SIZE 256
 #define NUM_LIMITS 6
 #define OEXT ".vol"
+#define POV ".pov"
 
 #define ODIR "output"
 
@@ -26,7 +27,7 @@ typedef struct _Node {
 
 // Create node with the initiate data
 Node *creat_node(char *opath, char *header) {
-    Node *node = (Node *)malloc(sizeof(Node));
+  Node *node = (Node *)malloc(sizeof(Node));
   char *_opath = (char *)malloc(sizeof(char) * PATH_SIZE);
   char *_header = (char *)malloc(sizeof(char) * LINE_SIZE);
 
@@ -131,7 +132,7 @@ Node *parse(char *filename) {
       }
 
       // Open the new output file
-      sprintf(opath, "%s/%s-frame-%d.dat", ODIR, filename_no_ext, cycle);
+      sprintf(opath, "%s/%s-frame-%d", ODIR, filename_no_ext, cycle);
       fop = fopen(opath, "w");
       if (fop == NULL) {
         printf("[%s] has no writen access!", opath);
@@ -165,7 +166,7 @@ Node *parse(char *filename) {
 void run(Node *link) {
   char cmd[CMD_SIZE] = {0};
   while (link) {
-    sprintf(cmd, "voro++ -g %.16lf %.16lf %.16lf %.16lf %.16lf %.16lf %s",
+    sprintf(cmd, "voro++ -y %.16lf %.16lf %.16lf %.16lf %.16lf %.16lf %s",
             link->limits[0], link->limits[1], link->limits[2], link->limits[3],
             link->limits[4], link->limits[5], link->opath);
     printf("%s\n", cmd);
@@ -201,6 +202,103 @@ void merge(Node *link, char *output_name) {
   printf("\nDone!\n");
 }
 
+void filter(Node *link, unsigned start, unsigned end) {
+  char fo_name[PATH_SIZE] = {0};
+  char fi_name[PATH_SIZE] = {0};
+  char line[LINE_SIZE] = {0};
+  unsigned if_match = 0;
+  unsigned id = 0;
+  FILE *fip = NULL, *fop = NULL;
+  regex_t reg;
+  regcomp(&reg, "//", REG_EXTENDED);
+
+  while (link) {
+    sprintf(fi_name, "%s_p.pov", link->opath);
+    sprintf(fo_name, "%s_p.pov.new", link->opath);
+    fip = fopen(fi_name, "r");
+    fop = fopen(fo_name, "w");
+    fgets(line, LINE_SIZE - 1, fip);
+    while (!feof(fip)) {
+      if (match(&reg, line)) {
+        sscanf(line, "// id %u", &id);
+        if (id >= start && id <= end) {
+          if_match = 1;
+          fputs(line, fop);
+        } else {
+          if_match = 0;
+        }
+      } else if (if_match) {
+        fputs(line, fop);
+      }
+      fgets(line, LINE_SIZE - 1, fip);
+    }
+    fclose(fop);
+    fclose(fip);
+
+    sprintf(fi_name, "%s_v.pov", link->opath);
+    sprintf(fo_name, "%s_v.pov.new", link->opath);
+    fip = fopen(fi_name, "r");
+    fop = fopen(fo_name, "w");
+    fgets(line, LINE_SIZE - 1, fip);
+    while (!feof(fip)) {
+      if (match(&reg, line)) {
+        sscanf(line, "// cell %u", &id);
+        if (id >= start && id <= end) {
+          if_match = 1;
+          fputs(line, fop);
+        } else {
+          if_match = 0;
+        }
+      } else if (if_match) {
+        fputs(line, fop);
+      }
+      fgets(line, LINE_SIZE - 1, fip);
+    }
+    fclose(fop);
+    fclose(fip);
+
+    link = link->next;
+  }
+
+  regfree(&reg);
+}
+
+void run_pov(Node *link, char *pov_template) {
+  char pov_import[PATH_SIZE] = {0};
+  char pov_file[PATH_SIZE] = {0};
+  char line[LINE_SIZE] = {0};
+  char command[LINE_SIZE] = {0};
+  unsigned line_number = 0;
+
+  FILE *fip = NULL, *fop = NULL;
+
+  while (link) {
+    sprintf(pov_file, "%s.pov", link->opath);
+    fip = fopen(pov_template, "r");
+    fop = fopen(pov_file, "w");
+
+    line_number = 0;
+    fgets(line, LINE_SIZE - 1, fip);
+    while (!feof(fip)) {
+      if (line_number == 26) {
+        sprintf(line, "#include \"%s_p.pov\"", link->opath);
+      } else if (line_number == 32) {
+        sprintf(line, "#include \"%s_v.pov\"", link->opath);
+      }
+      fputs(line, fop);
+      line_number++;
+      fgets(line, LINE_SIZE - 1, fip);
+    }
+    fclose(fip);
+    fclose(fop);
+
+    sprintf(command, "povray +I%s +O%s.png", pov_file, link->opath);
+    system(command);
+
+    link = link->next;
+  }
+}
+
 int main(int argc, char *argv[]) {
   printf("+--------------------------------------+\n");
   printf("| __     __                            |\n");
@@ -212,11 +310,15 @@ int main(int argc, char *argv[]) {
 
   if (argc == 1) {
     printf("\nUsage:\t./Voror.py [name of data file] [path to output]\n\n");
-  } else if (argc == 2 || argc == 3) {
+  } else if (argc == 4) {
     Node *link = NULL;
     link = parse(argv[1]);
     run(link);
-    merge(link, argc == 3 ? argv[2] : "total.vol");
+    unsigned start = 0, end = 0;
+    sscanf(argv[2], "%u", &start);
+    sscanf(argv[3], "%u", &end);
+    filter(link, start, end);
+    run_pov(link, "import.pov");
     free_link(&link);
   } else {
     printf("Wrong argument amount!");
