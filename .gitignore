@@ -3,6 +3,7 @@ data
 output
 *.dat
 *.vol
+*.o
 voror
 
 # Byte-compiled / optimized / DLL files
